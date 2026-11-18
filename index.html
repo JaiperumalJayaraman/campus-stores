@@ -8,6 +8,7 @@
       name="description"
       content="Work a shift at a fictional campus equipment desk in this interactive product engineering exercise."
     />
+    <meta name="theme-color" content="#f5f7fb" />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
   </head>
@@ -19,6 +20,12 @@
       aria-hidden="true"
       class="icon-library"
     >
+      <symbol id="icon-layout-dashboard" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="9" rx="1" />
+        <rect x="14" y="3" width="7" height="5" rx="1" />
+        <rect x="14" y="12" width="7" height="9" rx="1" />
+        <rect x="3" y="16" width="7" height="5" rx="1" />
+      </symbol>
       <symbol id="icon-package-open" viewBox="0 0 24 24">
         <path d="M12 22v-9" />
         <path
@@ -118,6 +125,7 @@
           </div>
           <button type="button" data-action="advance"></button>
         </aside>
+        <section class="pulse" aria-label="Live desk summary" data-pulse></section>
         <div class="shell">
           <nav aria-label="Store records" data-nav></nav>
           <section
@@ -127,8 +135,9 @@
           ></section>
         </div>
         <div class="statusbar">
-          <span role="status" aria-live="polite" tabindex="-1" data-status></span
-          ><button type="button" data-action="restart">
+          <span role="status" aria-live="polite" tabindex="-1" data-status></span>
+          <button type="button" data-action="undo-return" class="undo-button" hidden>Undo last return</button>
+          <button type="button" data-action="restart">
             Restart sample shift
           </button>
         </div>
