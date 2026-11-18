@@ -1,52 +1,60 @@
-# Campus Stores
+# Campus Stores — action-first equipment desk
 
-Campus Stores is a Product Engineer work sample set at a fictional campus media equipment desk. Work through a club’s screening, from equipment pickup to a partial return and the next morning’s handover. Open **Candidate brief** in the app for the assignment.
+A responsive, offline-friendly Product Engineer work sample for a **fictional campus media equipment desk**. Open **[index.html](./index.html)** in a browser to use it; no install, account, server, or external CSS framework is required.
 
-## Would I keep it?
+> **Reviewer starting point:** click **Restart sample shift**, then follow the three stages below. The prototype combines a live **Overview**, request-level partial-return tracking, and a physical-tag-verified morning handover.
 
-Yes. I would keep one loan slip per physical unit and attach the next shift’s return instructions to the slip that is still open. The working prototype is in [index.html](./index.html). The changed interaction starts under **Loan register → Leave handover**.
+## Product decision — would I keep it?
 
-**What worked.** At 3:45 pm, Isha’s message authorized Kabir Sen to collect the Film Society’s kit under request RQ-214. I issued projector PR-04, speaker SP-02 and adapter AD-12 to Kabir. When he brought back the first two at 7:30 pm, I could close just those two slips. The register still showed the adapter on L-404 and Tara Shah’s unrelated microphone on L-401. That is exactly the inventory position the morning clerk needs.
+**Yes, with a focused change.** I would **keep** one loan slip per physical equipment unit, the approved-request checks, and persistent cross-shift records. I would **change** the counter workflow so staff can immediately answer: **What needs my attention, which parts of a request remain out, and what exactly should the next clerk check?**
 
-**What I would change.** Kabir said Leela Das would bring the adapter at 9 am Saturday. In the original app I copied that promise and the tag into a Desk book note. On Saturday the outstanding slip still showed Kabir and the Friday 8 pm deadline. The clerk had to connect those records, and **Record return** would close whichever slip they clicked. Both AD-12 and AD-15 are USB-C to HDMI adapters from shelf C4. “Leela brought an adapter” is too little information to close L-404.
+**Evidence of what works:** On Friday at 3:45 pm, Isha Rao's Desk book message permits Kabir Sen to collect the Film Society screening kit under RQ-214. Issuing PR-04 (projector), SP-02 (speaker) and AD-12 (USB-C adapter) creates separate slips L-402, L-403 and L-404. Kabir can return the projector and speaker independently while AD-12 stays out. The unrelated microphone MI-09 on L-401 also remains correctly on loan. An in-repair projector, PR-06, cannot be issued.
 
-## Try the same shift
+**Evidence of what needed work:** In the original flat register, the clerk had to mentally join three Film Society slips to understand a partial return. On Friday at 7:30 pm Kabir says Leela Das will return the adapter Saturday at 9 am. A loose Desk book note did not make the expected person and time visible on the actual AD-12 slip. Even worse, two adapters (AD-12 and AD-15) are stored in shelf C4; returning one by description alone can close the wrong slip.
 
-Open the app and choose **Restart sample shift** to start at Friday pickup.
+## What I changed, and why
 
-| Desk time | What to do | What the clerk sees |
+1. **Action-first overview and live summary.** The first view now asks **“What needs attention now?”** The strip directly above the navigation reports **Items out / Due soon / Overdue / Handovers** from real slip data. The recommended action changes with the shift and the kit's state. Information is not fabricated: the opening sample includes MI-09 already on loan, so the opening count is **1**, not an arbitrary dashboard number.
+2. **Grouped, visible partial-return progress.** The Loan register now groups slips under **Film Society · RQ-214**, **Debate Union · RQ-209**, etc., with **X/Y items returned**, issued count, and an accessible progress bar. When Kabir returns two units, Film Society shows **2/3 returned** while AD-12 remains an explicit outstanding line. Completed requests are marked **Complete**. The **Outstanding / All slips** switch hides history until needed; individual physical tags and slips remain distinct.
+3. **Linked handovers and safer check-in.** **Leave handover** is attached to the open slip, and the same structured note appears in the Desk book. On Saturday the clerk must enter the physical tag. **AD-15** returns a mismatch and keeps **L-404** open; **AD-12** closes it. Simple same-shift returns still take one click, with **Undo last return** if the clerk makes a mistake. Restart requires confirmation. The Desk book has a **Print handover sheet** action.
+
+**Attention and accessibility choices:** Clear text status labels accompany semantic colours (red overdue/repair, amber due soon/partial, green returned/available, blue on loan). The layout is responsive, supports keyboard focus and browser dark mode, and avoids gratuitous animation and charts. The top KPIs and progress survive refresh through browser localStorage; no personal or real-campus data is stored.
+
+## Try the complete shift
+
+| Desk time | Reviewer action | Expected result |
 | --- | --- | --- |
-| Friday, 3:45 pm | Open the Film Society request and read Isha’s message in **Desk book**. In **Loan register**, use **New issue slip** three times. Select RQ-214, Kabir Sen and Fri 8 pm each time. Issue PR-04, SP-02 and AD-12 in that order. | The three tags have their own slips, L-402 through L-404. PR-06 is in repair and cannot be selected. |
-| Friday, 7:30 pm | Choose **Move to return time**. Record the returns of PR-04 and SP-02. On AD-12, open **Leave handover**, choose **Leela Das** and **Sat 9 am**, then save. | The handover appears in the Desk book with the tag, slip number, expected person and time. The original borrower and deadline stay visible. AD-12 is still on loan. |
-| Saturday, 9:00 am | Choose **Move to next morning**. The Desk book opens to the handover. Try entering the spare adapter’s tag, **AD-15**, and confirming. Then enter the issued adapter’s tag, **AD-12**, and confirm. | AD-15 gives a mismatch and L-404 stays open. AD-12 closes L-404 and returns that unit to stock. The handover moves to **Completed handovers**. The only outstanding loan is Tara’s MI-09. |
+| **Friday 3:45 pm — pickup** | In **Overview**, click **Issue next unit**. Read **Requests → Film Society** and Isha's message in **Desk book**. In **Loan register → New issue slip**, select **RQ-214 / Kabir Sen / Fri 8 pm** and issue **PR-04**, **SP-02**, then **AD-12** (one slip per item). | Three Film Society slips **L-402, L-403, L-404**; the summary shows **4 items out** including Tara's MI-09. The grouped register shows **0/3 returned**. |
+| **Friday 7:30 pm — partial return** | Click **Move to return time**. In the grouped Film Society section, **Record return** for **PR-04** and **SP-02**. Leave **AD-12** open; use **Leave handover**, set **Leela Das** and **Sat 9 am**. | Film Society **2/3 returned**, **1 outstanding**. The handover follows L-404 into Desk book. The summary shows **2 items out** (AD-12 and MI-09) and **1 handover**. |
+| **Saturday 9 am — handover** | Click **Move to next morning**. The app opens **Desk book** when there is an open handover. Try entering tag **AD-15** on L-404; then enter **AD-12**. | The first entry reports a **tag mismatch** and does not close the slip; the second closes **L-404**, returns AD-12 to stock and moves the handover to **Completed handovers**. Film Society becomes **3/3 returned** under **All slips**. Tara's MI-09 remains out. |
 
-The extra tag check applies to units left for another shift. The projector and speaker still take one click each to return. Changing the expected person or time updates the same handover in both views.
+Try **Undo last return** after checking in a unit to confirm an accidental closure can be reversed (the undo is available during the current page session). **Restart sample shift** clears the saved fictional shift after confirmation.
 
-**What I would observe at a real counter.** Watch ten split returns with the current desk and ten with the prototype. For each, record whether the incoming clerk closes the slip matching the physical tag on the first attempt without asking the previous clerk for help. Compare the two counts. A higher count would support keeping the change.
+## How I would evaluate it at a real desk
 
-## Run the app
+Observe **10 split-kit returns on the existing workflow** and **10 with the prototype**, with different staff taking over the next shift. Track:
 
-Open `index.html` in a modern browser. The app includes its scripts, styles, and icons and can run offline.
+- **Correct first-attempt check-in** — whether the incoming clerk closes the slip whose asset tag matches the physical item, with no help from the previous clerk.
+- **Time to locate the outstanding item** — from opening the register to correctly naming the still-out physical tag.
+- **Handover completeness** — whether the next clerk can find expected person, expected time, original borrower, and the correct loan slip without searching free-text notes.
 
-To serve it over local HTTP, run this from the repository folder and visit `http://localhost:8000`.
+Compare medians or counts across both sessions. A higher correct-first-attempt rate and shorter lookup time would support shipping the change. **These are proposed measurements, not claimed test results.**
 
-```sh
-python3 -m http.server 8000 --bind 127.0.0.1
-```
+## Run and inspect
 
-Each browser stores its own sample shift locally when browser storage is available. **Restart sample shift** restores the fictional starting records.
+Open `index.html` directly in any modern browser. To serve locally, run `python3 -m http.server 8000 --bind 127.0.0.1` in the repository folder and visit `http://localhost:8000`.
 
-## Source
+- `app.js`: fictional records, dashboard metrics, approval rules, request grouping, return validation, persistence, shift progression.
+- `index.html`: accessible page structure, candidate brief, four live KPI containers, bundled icons.
+- `styles.css`: semantic colour system, responsive layout, dark mode, focus states, print sheet.
+- `third-party/lucide-LICENSE.txt`: icon licence.
 
-- `index.html` contains the desk layout, candidate brief, and bundled icons.
-- `app.js` contains the sample records and interactions.
-- `styles.css` defines the desktop and mobile layouts.
+This is a front-end work sample, **not a live inventory backend**. State is saved per browser, not synchronized between clerks. For a production rollout, permissions, audit history, data synchronization, and shared inventory consistency would need to be designed and tested.
 
-Icon license notices are in [third-party/lucide-LICENSE.txt](third-party/lucide-LICENSE.txt).
+## Submission
 
+Submit the URL of the **latest commit**, not the repository homepage:
 
-## Submit your work
+`https://github.com/JaiperumalJayaraman/campus-stores/commit/COMMIT-SHA`
 
-1. [Fork Campus Stores](https://github.com/virinchi-healthcare/campus-stores/fork) into your GitHub account. Complete the candidate brief and push your changes to your public fork. In your README, point reviewers to your work and explain the decision you made.
-2. In your fork, open **Commits**, select the final commit you want reviewed, and copy the page URL. It should look like `https://github.com/YOUR-USERNAME/campus-stores/commit/COMMIT-SHA`.
-3. [Submit your work through the Google Form](https://docs.google.com/forms/d/e/1FAIpQLScvzoh1R4WS-SkiwAVBQbMvniieJYSoOEfLMyVo5CyjOvYUgQ/viewform). Your **roll number**, **email ID**, and **final commit link from your public fork** are required. Enter your roll number and email ID in the form only.
+Use the [candidate submission form](https://docs.google.com/forms/d/e/1FAIpQLScvzoh1R4WS-SkiwAVBQbMvniieJYSoOEfLMyVo5CyjOvYUgQ/viewform). Enter the required roll number and email **in the form only**.
