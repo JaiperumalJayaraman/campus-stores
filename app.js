@@ -87,6 +87,7 @@
     },
   ];
   const pages = [
+    ["Overview", "layout-dashboard"],
     ["Requests", "clipboard-list"],
     ["Inventory", "package"],
     ["Loan register", "book-open"],
@@ -94,7 +95,7 @@
   ];
   const original = () => ({
     version: 1,
-    tab: "Requests",
+    tab: "Overview",
     phase: 0,
     selected: "",
     filter: "All items",
@@ -114,6 +115,7 @@
     notice: "Sample shift · All records are fictional.",
   });
   let s = original();
+  let lastReturn = null;
   const getAsset = (id) => assets.find((x) => x.id === id);
   const getReq = (id) => requests.find((x) => x.id === id);
   const out = (id) => s.loans.find((l) => l.asset === id && !l.back);
@@ -166,8 +168,38 @@
     "</small></div><div>" +
     right +
     "</div></div>";
-  const badge = (t, good = false) =>
-    '<span class="tag' + (good ? " good" : "") + '">' + esc(t) + "</span>";
+  const badge = (label, tone = "neutral") => {
+    const safeTone = tone === true ? "good" : ["neutral", "good", "warning", "danger", "info"].includes(tone) ? tone : "neutral";
+    return '<span class="tag tag--' + safeTone + '">' + esc(label) + "</span>";
+  };
+  const overdue = (loan) => !loan.back && s.phase === 2 && loan.due === "Fri 8 pm";
+  const dueSoon = (loan) => !loan.back && (
+    (s.phase < 2 && loan.due === "Fri 8 pm") ||
+    (s.phase === 2 && ["Sat 9 am", "Sat 10 am"].includes(loan.due))
+  );
+  const loanStatus = (loan) => loan.back ? badge("Returned", "good") :
+    overdue(loan) ? badge("Overdue", "danger") :
+    dueSoon(loan) ? badge("Due soon", "warning") :
+    badge("On loan", "info");
+  const getStats = () => {
+    const open = s.loans.filter((l) => !l.back);
+    return {
+      open: open.length,
+      due: open.filter(dueSoon).length,
+      late: open.filter(overdue).length,
+      handovers: open.filter((l) => l.handover).length,
+    };
+  };
+  const progress = (requestId) => {
+    const request = getReq(requestId);
+    const slips = s.loans.filter((l) => l.req === requestId);
+    return { expected: request.items.length, issued: slips.length,
+      returned: slips.filter((l) => l.back).length, slips };
+  };
+  const progressBar = (returned, issued) =>
+    '<div class="progress-track" role="progressbar" aria-label="Items returned" aria-valuemin="0" aria-valuemax="' +
+    issued + '" aria-valuenow="' + returned + '"><span style="width:' +
+    (issued ? (returned / issued) * 100 : 0) + '%"></span></div>';
   function requestPage() {
     let html = head(
       "Approved requests",
@@ -215,6 +247,7 @@
         ["All items", "On shelf", "On loan", "In repair"].map((f) => [f, f]),
       ) +
       "</select></label></div>";
+    let visible = 0;
     for (const a of assets) {
       const status = a.repair
         ? "In repair"
@@ -222,12 +255,14 @@
           ? "On loan"
           : "On shelf";
       if (s.filter !== "All items" && s.filter !== status) continue;
+      visible++;
       html += row(
         a.id + " · " + a.type,
-        a.model + " · " + a.bin,
-        badge(status, status === "On shelf"),
+        a.model + " · Shelf " + a.bin,
+        badge(status, status === "On shelf" ? "good" : status === "In repair" ? "danger" : "info"),
       );
     }
+    if (!visible) html += '<div class="empty-state"><strong>No matching equipment</strong><p>Try another availability filter to find a unit.</p></div>';
     return html;
   }
   function handoverEditor(loan) {
@@ -277,66 +312,55 @@
   function register() {
     let html = head(
       "Loan register",
-      "One slip per physical unit",
-      s.editing
-        ? btn("Cancel", "cancel")
-        : btn("New issue slip", "new", "", "primary"),
+      "Track each physical tag, with all items from a request together.",
+      s.editing ? btn("Cancel", "cancel") : btn("+ New issue slip", "new", "", "primary"),
     );
     if (s.editing) {
       const available = assets.filter((a) => !a.repair && !out(a.id));
-      return (
-        html +
+      return html + '<div class="form-panel"><p class="form-intro">Create one slip per physical unit. Only approved, available units can leave the counter.</p>' +
         '<form data-issue><div class="form">' +
-        selectField(
-          "Approved request",
-          "req",
-          requests.map((r) => [r.id, r.id + " · " + r.club]),
-        ) +
-        selectField(
-          "Unit leaving the desk",
-          "asset",
-          available.map((a) => [a.id, a.id + " · " + a.type]),
-        ) +
+        selectField("Approved request", "req", requests.map((r) => [r.id, r.id + " · " + r.club])) +
+        selectField("Unit leaving the desk", "asset", available.map((a) => [a.id, a.id + " · " + a.type])) +
         selectField("Collected by", "who", personOptions) +
         selectField("Return by", "due", returnTimeOptions) +
-        '</div><button type="submit" class="primary">Save issue slip</button></form>'
-      );
+        '</div><button type="submit" class="primary">Save issue slip</button></form></div>';
     }
-    html +=
-      '<div class="buttons">' +
-      ["Outstanding", "All slips"]
-        .map(
-          (v, i) =>
-            '<button type="button" data-action="scope" data-val="' +
-            i +
-            '" aria-pressed="' +
-            (s.onlyOpen === (i === 0)) +
-            '">' +
-            v +
-            "</button>",
-        )
-        .join("") +
-      "</div>";
-    const shown = s.loans
-      .filter((l) => !s.onlyOpen || !l.back)
-      .slice()
-      .reverse();
-    if (!shown.length) html += "<p>No outstanding slips.</p>";
-    for (const loan of shown) {
-      if (loan.handover) {
-        html += handoverCard(loan);
-        continue;
+    html += '<div class="buttons segmented">' +
+      ["Outstanding", "All slips"].map((v, i) =>
+        '<button type="button" data-action="scope" data-val="' + i +
+        '" aria-pressed="' + (s.onlyOpen === (i === 0)) + '">' + v + '</button>'
+      ).join("") + '</div>';
+    const shown = s.loans.filter((l) => !s.onlyOpen || !l.back);
+    if (!shown.length) {
+      return html + '<div class="empty-state"><strong>No outstanding slips</strong><p>All issued equipment has been returned. You can view completed slips or issue a new unit.</p>' +
+        btn("View all slips", "scope", "1") + '</div>';
+    }
+    for (const request of requests) {
+      const slips = shown.filter((l) => l.req === request.id);
+      if (!slips.length) continue;
+      const p = progress(request.id);
+      const complete = p.issued === p.expected && p.returned === p.expected;
+      html += '<section class="request-group" aria-label="' + esc(request.club) + ' loan progress">' +
+        '<div class="request-group-head"><div><small>' + esc(request.id) + ' · ' + esc(request.event) + '</small>' +
+        '<h3>' + esc(request.club) + '</h3></div>' +
+        badge(complete ? "Complete" : p.returned > 0 ? "Partially returned" : "In progress", complete ? "good" : p.returned > 0 ? "warning" : "info") +
+        '</div><div class="request-progress"><strong>' + p.returned + '/' + p.issued + ' items returned</strong>' +
+        '<span>' + p.issued + ' of ' + p.expected + ' approved items issued</span></div>' +
+        progressBar(p.returned, p.issued) + '<div class="request-slips">';
+      for (const loan of slips.slice().sort((a,b) => a.num-b.num)) {
+        if (loan.handover) {
+          html += handoverCard(loan);
+        } else {
+          html += '<article class="loan-entry" aria-label="Slip L-' + loan.num + ' for ' + esc(loan.asset) + '">' +
+            '<div class="loan-info"><div><strong>' + esc(loan.asset) + '</strong><span class="loan-type">' +
+            esc(getAsset(loan.asset).type) + '</span><small>L-' + loan.num + ' · ' +
+            esc(loan.who) + ' · Due ' + esc(loan.due) + '</small></div>' +
+            '<div class="loan-actions">' + loanStatus(loan) +
+            (loan.back ? '' : btn("Record return", "return", String(loan.num), "return-button")) +
+            '</div></div>' + (loan.back ? '' : handoverEditor(loan)) + '</article>';
+        }
       }
-      const slipRow = row(
-        `L-${loan.num} · ${loan.asset}`,
-        `${loan.req} · ${loan.who} · Due ${loan.due}`,
-        loan.back
-          ? badge("Returned")
-          : btn("Record return", "return", String(loan.num)),
-      );
-      html += `<article class="loan-entry" aria-label="Slip L-${loan.num} for ${esc(loan.asset)}">
-        ${slipRow}${loan.back ? "" : handoverEditor(loan)}
-      </article>`;
+      html += '</div></section>';
     }
     return html;
   }
@@ -346,11 +370,15 @@
       "Messages from clubs and notes for the next shift",
     );
     const handovers = s.loans.filter((l) => l.handover);
+    html += '<div class="desk-actions">' + btn("Print handover sheet", "print") + '</div>';
     const open = handovers.filter((l) => !l.back);
     const closed = handovers.filter((l) => l.back);
     if (open.length) {
-      html += `<section><h3>Open handovers (${open.length})</h3>
+      html += `<section class="handover-section"><h3>Open handovers (${open.length})</h3>
+        <p class="helper-text">Verify the physical tag before you close a slip for the next shift.</p>
         ${open.map(handoverCard).join("")}</section>`;
+    } else {
+      html += '<div class="empty-state compact"><strong>No handovers waiting</strong><p>When a unit must return on a later shift, open its loan slip and choose Leave handover.</p></div>';
     }
     if (closed.length) {
       html += `<details class="closed-handovers"><summary>Completed handovers (${closed.length})</summary>
@@ -390,7 +418,86 @@
       '<form data-note><div class="form"><label class="full"><span>Note for the next shift</span><textarea name="note" rows="2" maxlength="400" required></textarea></label></div><button type="submit">Add handover note</button></form>'
     );
   }
+  function summaryStrip() {
+    const stats = getStats();
+    const cards = [
+      ["Items out", stats.open, "neutral", "Physical units currently loaned"],
+      ["Due soon", stats.due, stats.due ? "warning" : "neutral", "Items to collect at this shift"],
+      ["Overdue", stats.late, stats.late ? "danger" : "neutral", "Past their original deadline"],
+      ["Handovers", stats.handovers, stats.handovers ? "info" : "neutral", "Awaiting the next counter check"],
+    ];
+    return cards.map(([label, number, tone, detail]) =>
+      '<div class="metric metric--' + tone + '"><div class="metric-label">' + label +
+      '</div><strong class="metric-number">' + number +
+      '</strong><small>' + detail + '</small></div>').join("");
+  }
+  function overview() {
+    const stats = getStats();
+    const film = progress("RQ-214");
+    const remaining = film.slips.filter((l) => !l.back);
+    const handovers = remaining.filter((l) => l.handover);
+    let nextTitle, nextDescription, nextAction, nextLabel;
+    if (s.phase === 2 && handovers.length) {
+      nextTitle = "Verify the returned unit";
+      nextDescription = "Leela is expected with the adapter. Check its physical tag against the open slip before closing it.";
+      nextAction = "go-handovers"; nextLabel = "Open morning handover";
+    } else if (film.issued < film.expected) {
+      nextTitle = "Get the screening kit ready";
+      nextDescription = "Film Society has " + film.issued + " of " + film.expected +
+        " approved items issued. Create a separate slip for each unit.";
+      nextAction = "start-issue"; nextLabel = "Issue next unit";
+    } else if (remaining.length) {
+      nextTitle = s.phase === 0 ? "Await the screening return" : "Finish the split return";
+      nextDescription = remaining.length + " Film Society item" + (remaining.length === 1 ? " is" : "s are") +
+        " still out. Record the units that have arrived and leave a linked handover for anything still missing.";
+      nextAction = "go-loans"; nextLabel = "Review outstanding slips";
+    } else {
+      nextTitle = "Film Society kit completed";
+      nextDescription = "All three screening items have been checked in. Review any remaining loans before ending the shift.";
+      nextAction = "go-loans"; nextLabel = "View loan register";
+    }
+    let html = '<div class="overview-heading"><div class="eyebrow">DESK OVERVIEW</div>' +
+      '<h2>What needs attention now?</h2><p>One clear next action, based on the live loan register.</p></div>' +
+      '<section class="next-action"><div><div class="eyebrow">RECOMMENDED NEXT STEP</div><h3>' +
+      esc(nextTitle) + '</h3><p>' + esc(nextDescription) + '</p></div>' +
+      btn(nextLabel, nextAction, "", "primary") + '</section>' +
+      '<div class="overview-grid"><section class="panel"><div class="panel-header"><div><h3>Screening kit</h3>' +
+      '<p>Film Society · RQ-214</p></div>' +
+      badge(film.returned === film.expected ? "Complete" :
+        film.returned > 0 ? "Partially returned" : "In progress",
+        film.returned === film.expected ? "good" : film.returned > 0 ? "warning" : "info") +
+      '</div><div class="large-progress">' + film.returned + '<span> / ' + film.expected +
+      ' returned</span></div>' + progressBar(film.returned, film.expected) +
+      '<p class="helper-text">' + film.issued + ' issued · ' +
+      film.slips.filter((l) => !l.back).length + ' still out</p>' +
+      btn("View all kit slips", "go-loans") + '</section>' +
+      '<section class="panel"><div class="panel-header"><div><h3>Counter priorities</h3>' +
+      '<p>Only work that needs your attention</p></div></div>';
+    if (stats.late) {
+      html += '<div class="priority-row"><span>' + badge("Overdue", "danger") +
+        '</span><div><strong>' + stats.late + ' past-due item' + (stats.late === 1 ? '' : 's') +
+        '</strong><small>Check open slips and expected handovers</small></div></div>';
+    }
+    if (stats.handovers) {
+      html += '<div class="priority-row"><span>' + badge("Handover", "warning") +
+        '</span><div><strong>' + stats.handovers + ' awaiting tag verification</strong>' +
+        '<small>Close the correct physical unit, not a similar spare</small></div></div>';
+    }
+    if (!stats.late && !stats.handovers) {
+      html += '<div class="priority-row"><span>' + badge("Up to date", "good") +
+        '</span><div><strong>No critical handovers</strong><small>Watch upcoming returns and current loans</small></div></div>';
+    }
+    html += btn("Open desk book", "go-handovers") + '</section></div>' +
+      '<section class="workflow"><h3>Your shift at a glance</h3><div class="step-grid">' +
+      shifts.map((shift, index) =>
+        '<div class="workflow-step' + (s.phase === index ? ' active' : '') + '">' +
+        '<span class="step-number">' + (index + 1) + '</span><div><strong>' +
+        esc(shift.title) + '</strong><small>' + esc(shift.time) + '</small></div></div>'
+      ).join("") + '</div></section>';
+    return html;
+  }
   const screens = {
+    Overview: overview,
     Requests: requestPage,
     Inventory: inventory,
     "Loan register": register,
@@ -418,7 +525,9 @@
           "</button>",
       )
       .join("");
+    q("[data-pulse]").innerHTML = summaryStrip();
     q("[data-page]").innerHTML = screens[s.tab]();
+    q('[data-action="undo-return"]').hidden = !lastReturn;
     if (q("[data-filter]")) q("[data-filter]").value = s.filter;
     q("[data-status]").textContent = s.notice;
   }
@@ -433,6 +542,7 @@
     }
   }
   function closeLoan(loan) {
+    lastReturn = { num: loan.num, closedAt: loan.handover?.closedAt };
     loan.back = true;
     if (loan.handover) loan.handover.closedAt = shifts[s.phase].time;
     commit(loan.asset + " returned to stock. Slip L-" + loan.num + " closed.");
@@ -443,8 +553,29 @@
     const v = b.dataset.val;
     switch (b.dataset.action) {
       case "restart":
-        s = original();
+        if (!window.confirm("Restart the sample shift? All current issues, returns and handovers will be reset.")) return;
+        s = original(); lastReturn = null;
         break;
+      case "start-issue":
+        s.tab = "Loan register"; s.editing = true; break;
+      case "go-loans":
+        s.tab = "Loan register"; s.editing = false; s.onlyOpen = true; break;
+      case "go-handovers":
+        s.tab = "Desk book"; s.editing = false; break;
+      case "print":
+        window.print(); return;
+      case "undo-return": {
+        const loan = s.loans.find((l) => l.num === lastReturn?.num);
+        if (!loan || !loan.back) return;
+        loan.back = false;
+        if (loan.handover) {
+          if (lastReturn.closedAt === undefined) delete loan.handover.closedAt;
+          else loan.handover.closedAt = lastReturn.closedAt;
+        }
+        lastReturn = null;
+        commit("Return undone. Slip L-" + loan.num + " is open again.");
+        return;
+      }
       case "advance":
         if (s.phase < 2) s.phase++;
         s.notice = "Shift time updated.";
