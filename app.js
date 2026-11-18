@@ -64,6 +64,9 @@
     "Tara Shah",
     "Dev Menon",
   ];
+  const returnTimes = ["Fri 8 pm", "Sat 9 am", "Sat 10 am", "Sat noon"];
+  const personOptions = people.map((name) => [name, name]);
+  const returnTimeOptions = returnTimes.map((time) => [time, time]);
   const shifts = [
     {
       time: "Friday · 3:45 pm",
@@ -126,10 +129,17 @@
           "'": "&#39;",
         })[c],
     );
-  const opts = (list) =>
+  const opts = (list, selected) =>
     list
-      .map(([v, t]) => '<option value="' + esc(v) + '">' + esc(t) + "</option>")
+      .map(
+        ([value, label]) =>
+          `<option value="${esc(value)}"${value === selected ? " selected" : ""}>${esc(label)}</option>`,
+      )
       .join("");
+  const selectField = (label, key, options, selected) =>
+    `<label><span>${esc(label)}</span><select name="${esc(key)}" required>
+      <option value="">Select…</option>${opts(options, selected)}
+    </select></label>`;
   const btn = (label, act, val = "", style = "") =>
     '<button type="button" data-action="' +
     act +
@@ -220,6 +230,50 @@
     }
     return html;
   }
+  function handoverEditor(loan) {
+    const saved = loan.handover;
+    return `<details class="handover-editor">
+      <summary>${saved ? "Edit handover" : "Leave handover"}</summary>
+      <form data-handover="${loan.num}">
+        <div class="form">
+          ${selectField("Expected from", "from", personOptions, saved?.from)}
+          ${selectField("Expected back", "expected", returnTimeOptions, saved?.expected)}
+        </div>
+        <button type="submit">Save handover</button>
+      </form>
+    </details>`;
+  }
+  function handoverCard(loan) {
+    const handover = loan.handover;
+    const unit = getAsset(loan.asset);
+    const request = getReq(loan.req);
+    const titleId = "handover-" + loan.num;
+    const errorId = "tag-error-" + loan.num;
+    return `<article class="handover-card" aria-labelledby="${titleId}">
+      <header>
+        <div><small>${esc(request.club)} · ${esc(request.id)} · Slip L-${loan.num}</small>
+          <h3 id="${titleId}" tabindex="-1">${esc(unit.id)} · ${esc(unit.type)}</h3>
+        </div>
+        ${badge(loan.back ? "Returned" : "Awaiting return", loan.back)}
+      </header>
+      <dl class="handover-facts">
+        <div><dt>Expected from</dt><dd>${esc(handover.from)}</dd></div>
+        <div><dt>Expected back</dt><dd>${esc(handover.expected)}</dd></div>
+      </dl>
+      <p class="issue-detail">Issued to ${esc(loan.who)} · Original due ${esc(loan.due)}</p>
+      ${loan.back
+        ? `<p class="receipt">Tag checked · ${esc(handover.closedAt)}</p>`
+        : `<form data-check-in="${loan.num}" class="tag-check">
+            <label><span>Tag on returned unit</span>
+              <input name="tag" required maxlength="32" autocomplete="off"
+                autocapitalize="characters" spellcheck="false" aria-describedby="${errorId}" />
+            </label>
+            <button type="submit" class="primary">Confirm return</button>
+            <p id="${errorId}" class="tag-error" role="alert"></p>
+          </form>
+          ${handoverEditor(loan)}`}
+    </article>`;
+  }
   function register() {
     let html = head(
       "Loan register",
@@ -230,37 +284,21 @@
     );
     if (s.editing) {
       const available = assets.filter((a) => !a.repair && !out(a.id));
-      const select = (label, key, options) =>
-        "<label><span>" +
-        label +
-        '</span><select name="' +
-        key +
-        '" required><option value="">Select…</option>' +
-        opts(options) +
-        "</select></label>";
       return (
         html +
         '<form data-issue><div class="form">' +
-        select(
+        selectField(
           "Approved request",
           "req",
           requests.map((r) => [r.id, r.id + " · " + r.club]),
         ) +
-        select(
+        selectField(
           "Unit leaving the desk",
           "asset",
           available.map((a) => [a.id, a.id + " · " + a.type]),
         ) +
-        select(
-          "Collected by",
-          "who",
-          people.map((p) => [p, p]),
-        ) +
-        select(
-          "Return by",
-          "due",
-          ["Fri 8 pm", "Sat 9 am", "Sat 10 am", "Sat noon"].map((d) => [d, d]),
-        ) +
+        selectField("Collected by", "who", personOptions) +
+        selectField("Return by", "due", returnTimeOptions) +
         '</div><button type="submit" class="primary">Save issue slip</button></form>'
       );
     }
@@ -284,14 +322,22 @@
       .slice()
       .reverse();
     if (!shown.length) html += "<p>No outstanding slips.</p>";
-    for (const l of shown)
-      html += row(
-        "L-" + l.num + " · " + l.asset,
-        l.req + " · " + l.who + " · Due " + l.due,
-        l.back
+    for (const loan of shown) {
+      if (loan.handover) {
+        html += handoverCard(loan);
+        continue;
+      }
+      const slipRow = row(
+        `L-${loan.num} · ${loan.asset}`,
+        `${loan.req} · ${loan.who} · Due ${loan.due}`,
+        loan.back
           ? badge("Returned")
-          : btn("Record return", "return", String(l.num)),
+          : btn("Record return", "return", String(loan.num)),
       );
+      html += `<article class="loan-entry" aria-label="Slip L-${loan.num} for ${esc(loan.asset)}">
+        ${slipRow}${loan.back ? "" : handoverEditor(loan)}
+      </article>`;
+    }
     return html;
   }
   function deskbook() {
@@ -299,6 +345,17 @@
       "Desk book",
       "Messages from clubs and notes for the next shift",
     );
+    const handovers = s.loans.filter((l) => l.handover);
+    const open = handovers.filter((l) => !l.back);
+    const closed = handovers.filter((l) => l.back);
+    if (open.length) {
+      html += `<section><h3>Open handovers (${open.length})</h3>
+        ${open.map(handoverCard).join("")}</section>`;
+    }
+    if (closed.length) {
+      html += `<details class="closed-handovers"><summary>Completed handovers (${closed.length})</summary>
+        ${closed.map(handoverCard).join("")}</details>`;
+    }
     const entries = [
       [
         "Friday · 3:20 pm",
@@ -375,6 +432,11 @@
         " Browser storage is unavailable. Progress lasts for this visit.";
     }
   }
+  function closeLoan(loan) {
+    loan.back = true;
+    if (loan.handover) loan.handover.closedAt = shifts[s.phase].time;
+    commit(loan.asset + " returned to stock. Slip L-" + loan.num + " closed.");
+  }
   root.addEventListener("click", (e) => {
     const b = e.target.closest("[data-action]");
     if (!b) return;
@@ -386,6 +448,10 @@
       case "advance":
         if (s.phase < 2) s.phase++;
         s.notice = "Shift time updated.";
+        if (s.phase === 2 && s.loans.some((l) => l.handover && !l.back)) {
+          s.tab = "Desk book";
+          s.editing = false;
+        }
         break;
       case "tab":
         s.tab = v;
@@ -408,10 +474,8 @@
         break;
       case "return": {
         const l = s.loans.find((l) => l.num === Number(v));
-        if (!l || l.back) return;
-        l.back = true;
-        s.notice = l.asset + " returned to stock. Slip L-" + l.num + " closed.";
-        break;
+        if (l && !l.back && !l.handover) closeLoan(l);
+        return;
       }
     }
     commit();
@@ -426,6 +490,33 @@
     e.preventDefault();
     const f = e.target;
     const form = new FormData(f);
+    if (f.matches("[data-handover], [data-check-in]")) {
+      const num = Number(f.dataset.handover ?? f.dataset.checkIn);
+      const loan = s.loans.find((l) => l.num === num);
+      if (!loan || loan.back) return;
+      if (f.matches("[data-handover]")) {
+        const from = form.get("from");
+        const expected = form.get("expected");
+        if (!people.includes(from) || !returnTimes.includes(expected)) return;
+        loan.handover = { from, expected };
+        commit("Handover saved for " + loan.asset + " in the Desk book.");
+        q("#handover-" + num)?.focus();
+        return;
+      }
+      if (!loan.handover) return;
+      const tag = f.elements.namedItem("tag");
+      if (tag.value.trim().toUpperCase() !== loan.asset) {
+        tag.setAttribute("aria-invalid", "true");
+        f.querySelector(".tag-error").textContent =
+          "Tag mismatch. Slip L-" + num + " is for " + loan.asset + " and is still open.";
+        tag.focus();
+        tag.select();
+        return;
+      }
+      closeLoan(loan);
+      q("[data-status]").focus();
+      return;
+    }
     if (f.matches("[data-note]")) {
       const text = String(form.get("note")).trim();
       if (!text) return;
@@ -482,7 +573,16 @@
     s = {
       ...original(),
       ...d,
-      loans: d.loans.map((l) => ({ ...l })),
+      loans: d.loans.map(({ handover, ...loan }) => {
+        if (
+          people.includes(handover?.from) &&
+          returnTimes.includes(handover.expected) &&
+          (!loan.back || shifts.some((shift) => shift.time === handover.closedAt))
+        ) {
+          loan.handover = { ...handover };
+        }
+        return loan;
+      }),
       notes: d.notes.map((n) => ({ ...n })),
     };
     paint();

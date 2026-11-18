@@ -306,6 +306,92 @@ body > main {
 #campus-stores .full {
   grid-column: 1/-1;
 }
+#campus-stores .loan-entry {
+  border-top: 1px solid var(--line);
+  padding: 9px 0;
+}
+#campus-stores .loan-entry .row {
+  padding: 0;
+  border: 0;
+}
+#campus-stores .handover-editor {
+  margin-top: 6px;
+  font-size: 13px;
+}
+#campus-stores .handover-editor summary,
+#campus-stores .closed-handovers summary {
+  width: fit-content;
+  padding: 4px 0;
+}
+#campus-stores .handover-card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--sel);
+  border-radius: 7px;
+  padding: 13px 15px;
+  margin: 8px 0 14px;
+}
+#campus-stores .handover-card header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6px 12px;
+}
+#campus-stores .handover-card h3 {
+  margin: 2px 0;
+  font-size: 17px;
+}
+#campus-stores .handover-card .tag:not(.good) {
+  color: var(--memotxt);
+  background: var(--memo);
+}
+#campus-stores .handover-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 12px 0 5px;
+}
+#campus-stores .handover-facts dt,
+#campus-stores .issue-detail {
+  color: var(--quiet);
+  font-size: 12px;
+}
+#campus-stores .handover-facts dd {
+  margin: 0;
+  font-weight: 650;
+}
+#campus-stores .tag-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+#campus-stores .tag-check label {
+  font-size: 13px;
+  font-weight: 600;
+}
+#campus-stores .tag-check input {
+  width: 13ch;
+  max-width: 100%;
+  margin-top: 3px;
+}
+#campus-stores .tag-error {
+  flex-basis: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mark);
+}
+#campus-stores .tag-error:empty {
+  display: none;
+}
+#campus-stores .receipt {
+  margin-top: 8px;
+  color: var(--oktxt);
+  font-size: 13px;
+}
 #campus-stores textarea {
   resize: vertical;
 }
@@ -365,7 +451,13 @@ body > main {
 }
 @media (pointer: coarse) {
   #campus-stores button,
-  #campus-stores select {
+  #campus-stores select,
+  #campus-stores .handover-editor summary,
+  #campus-stores .closed-handovers summary {
     min-height: 44px;
+  }
+  #campus-stores .handover-editor summary,
+  #campus-stores .closed-handovers summary {
+    padding-block: 12px;
   }
 }
