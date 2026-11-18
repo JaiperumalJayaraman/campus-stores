@@ -289,7 +289,7 @@
         <div><small>${esc(request.club)} · ${esc(request.id)} · Slip L-${loan.num}</small>
           <h3 id="${titleId}" tabindex="-1">${esc(unit.id)} · ${esc(unit.type)}</h3>
         </div>
-        ${badge(loan.back ? "Returned" : "Awaiting return", loan.back)}
+        ${loanStatus(loan)}
       </header>
       <dl class="handover-facts">
         <div><dt>Expected from</dt><dd>${esc(handover.from)}</dd></div>
