@@ -1,0 +1,1 @@
+{"name":"apm-product-portfolio","version":"1.0.0","private":true,"type":"module","description":"Two standalone UX + Tech + Business APM prototypes","scripts":{"test":"node --test youtube-dubbing-quality-studio/tests/*.test.mjs smart-entrance-navigation/tests/*.test.mjs"}}
